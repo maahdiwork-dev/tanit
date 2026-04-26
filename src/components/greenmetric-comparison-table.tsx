@@ -42,7 +42,7 @@ export function GreenMetricComparisonTable() {
                   key={row.university}
                   className={cn(
                     "transition-colors hover:bg-zinc-100/80",
-                    isUcar && "bg-blue-500/[0.08] text-zinc-950",
+                    isUcar && "bg-[#A8C4AE]/20 text-zinc-950",
                   )}
                 >
                   <td className="px-6 py-3 font-mono text-zinc-700">
@@ -51,7 +51,7 @@ export function GreenMetricComparisonTable() {
                   <td className="px-6 py-3 font-medium text-zinc-900">
                     {row.university}
                     {isUcar ? (
-                      <span className="ml-2 rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                      <span className="ml-2 rounded border border-[#4A7C59]/30 bg-[#A8C4AE]/30 px-1.5 py-0.5 text-[10px] font-medium text-[#2D4A35]">
                         Présidence
                       </span>
                     ) : null}
@@ -67,7 +67,7 @@ export function GreenMetricComparisonTable() {
                       <div
                         className={cn(
                           "h-full rounded-full",
-                          isUcar ? "bg-blue-500" : "bg-zinc-600",
+                          isUcar ? "bg-[#4A7C59]" : "bg-zinc-600",
                         )}
                         style={{ width: `${(row.score / maxScore) * 100}%` }}
                       />

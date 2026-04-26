@@ -21,7 +21,7 @@ export function GreenMetricPhaseCard({ phase }: { phase: GreenMetricPhase }) {
     <TanitCard>
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="font-mono text-[12px] uppercase tracking-[0.14em] text-blue-600">
+          <div className="font-mono text-[12px] uppercase tracking-[0.14em] text-[#2D4A35]">
             {phase.phase} · {phase.period}
           </div>
           <div className="mt-1 text-[17px] font-semibold text-zinc-950">
@@ -45,7 +45,7 @@ export function GreenMetricPhaseCard({ phase }: { phase: GreenMetricPhase }) {
                 {action.label}
               </span>
             </div>
-            <div className="font-mono text-[12px] text-blue-700">
+            <div className="font-mono text-[12px] text-[#4A7C59]">
               {action.impact}
             </div>
             <div className="font-mono text-[12px] text-zinc-600">

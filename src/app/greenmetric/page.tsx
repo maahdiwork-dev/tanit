@@ -4,6 +4,7 @@ import { Download, Radar, RefreshCw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
+import { AstariaChatPanel } from "@/components/astaria-chat-panel";
 import { CategoryDetailSheet } from "@/components/category-detail-sheet";
 import { GreenMetricCategoryCard } from "@/components/greenmetric-category-card";
 import { GreenMetricComparisonTable } from "@/components/greenmetric-comparison-table";
@@ -143,8 +144,8 @@ function StrategyButton({
     <button
       onClick={onClick}
       disabled={phase === "working"}
-      className={`inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-[13px] font-semibold text-white shadow-lg shadow-blue-950/20 transition-opacity disabled:opacity-70 ${className}`}
-      style={{ background: "linear-gradient(180deg,#3b82f6, #1B487E)" }}
+      className={`inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-[13px] font-semibold text-white shadow-lg shadow-emerald-950/20 transition-opacity disabled:opacity-70 olive-glow ${className}`}
+      style={{ background: "linear-gradient(180deg,#4A7C59, #2D4A35)" }}
     >
       {phase === "working" ? (
         <>
@@ -260,14 +261,14 @@ function GreenMetricPageInner() {
     <div className="mx-auto max-w-[1320px] px-10 pb-16 pt-8">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="mb-1.5 text-[12px] text-zinc-500">
-            Université de Carthage · Présidence
+          <div className="mb-1.5 text-[11px] uppercase tracking-[0.18em] font-semibold text-[#2D4A35]">
+            Mission Verte · UCAR
           </div>
           <h1 className="text-[28px] font-semibold leading-[1.15] tracking-tight text-zinc-950">
             Classement UI GreenMetric
           </h1>
-          <div className="mt-1.5 text-[13px] text-zinc-500">
-            Évaluation mondiale de durabilité des universités · 2025
+          <div className="mt-1.5 font-display italic text-[14px] text-zinc-700">
+            Évaluation mondiale de durabilité — pilotée par Astaria
           </div>
         </div>
         <StrategyButton phase={downloadPhase} onClick={generatePlan} />
@@ -325,7 +326,7 @@ function GreenMetricPageInner() {
                   </div>
                   <div className="relative h-4 rounded-full bg-zinc-100">
                     <div
-                      className="h-4 rounded-full bg-gradient-to-r from-blue-900 to-blue-400"
+                      className="h-4 rounded-full bg-gradient-to-r from-[#2D4A35] to-[#6BAA7E]"
                       style={{ width: `${markerPosition}%` }}
                     />
                     {[50, 72, 85].map((position) => (
@@ -336,7 +337,7 @@ function GreenMetricPageInner() {
                       />
                     ))}
                     <span
-                      className="absolute top-1/2 h-8 w-1.5 -translate-y-1/2 rounded-full bg-blue-300 shadow-[0_0_20px_rgba(98,144,249,0.65)]"
+                      className="absolute top-1/2 h-8 w-1.5 -translate-y-1/2 rounded-full bg-[#A8C4AE] shadow-[0_0_20px_rgba(107,170,126,0.65)]"
                       style={{ left: `calc(${markerPosition}% - 3px)` }}
                     />
                   </div>
@@ -372,7 +373,7 @@ function GreenMetricPageInner() {
                   onClick={() => setOpenCategory(category)}
                   className={`cursor-pointer transition-all rounded-lg ${
                     highlightedCode === category.code
-                      ? "ring-2 ring-blue-500/70 ring-offset-2 ring-offset-white"
+                      ? "ring-2 ring-[#4A7C59]/70 ring-offset-2 ring-offset-white"
                       : ""
                   }`}
                 >
@@ -404,7 +405,7 @@ function GreenMetricPageInner() {
                   Écart à combler: +940 points sur 12 mois
                 </div>
               </div>
-              <div className="rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 font-mono text-[12px] text-blue-700">
+              <div className="rounded-md border border-[#4A7C59]/30 bg-[#A8C4AE]/20 px-3 py-2 font-mono text-[12px] text-[#2D4A35]">
                 Cible score: 7 200
               </div>
             </div>
@@ -421,6 +422,8 @@ function GreenMetricPageInner() {
               />
             </div>
           </section>
+
+          <AstariaChatPanel />
 
           <section>
             <div className="rounded-md border border-zinc-200 bg-white/70 p-5 text-[12.5px] leading-6 text-zinc-500">

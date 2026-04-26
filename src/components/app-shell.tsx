@@ -42,7 +42,7 @@ const navItems = [
   },
   {
     href: "/greenmetric",
-    label: "Classement GreenMetric",
+    label: "Mission Verte",
     icon: Leaf,
   },
   {

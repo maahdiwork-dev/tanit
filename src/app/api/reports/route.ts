@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+import autoTable, { type CellHookData } from "jspdf-autotable";
 
 import {
   ApiError,
@@ -57,6 +57,7 @@ type KpiWithInstitution = {
 
 type GreenMetricPdfCategory = {
   code: string;
+  metric: string;
   label: string;
   score: number;
   max: number;
@@ -65,168 +66,288 @@ type GreenMetricPdfCategory = {
 };
 
 type GreenMetricPdfAction = {
+  id: string;
   action: string;
-  impact: string;
+  category: string;
+  impact: number;
   cost: string;
   delay: string;
 };
 
 type GreenMetricPdfPhase = {
   title: string;
-  points: string;
+  period: string;
+  targetPoints: number;
+  targetCost: string;
+  totalNote: string;
   actions: GreenMetricPdfAction[];
 };
 
 type ReportSupabase = ReturnType<typeof getSupabaseAdmin> | null;
 
-const greenMetricPdfCategories: GreenMetricPdfCategory[] = [
+type GreenMetricSummaryKpiRow = {
+  metric: string;
+  value: number | string | null;
+  period?: string | null;
+};
+
+const jadePrimary: [number, number, number] = [74, 124, 89];
+const jadeDeep: [number, number, number] = [45, 74, 53];
+const jadeSoft: [number, number, number] = [168, 196, 174];
+const jadeGlow: [number, number, number] = [107, 170, 126];
+const ink: [number, number, number] = [28, 35, 31];
+const muted: [number, number, number] = [92, 105, 96];
+
+const greenMetricCategoryDefinitions: Array<
+  Pick<GreenMetricPdfCategory, "code" | "metric" | "label" | "max">
+> = [
   {
     code: "SI",
-    label: "Infrastructure et aménagement",
-    score: 1225,
+    metric: "greenmetric_si_score",
+    label: "Setting & Infrastructure",
     max: 1500,
-    percentage: 81.7,
-    status: "Solide",
   },
   {
     code: "EC",
-    label: "Énergie et climat",
-    score: 1375,
+    metric: "greenmetric_ec_score",
+    label: "Energy & Climate",
     max: 2100,
-    percentage: 65.5,
-    status: "À renforcer",
   },
   {
     code: "WS",
-    label: "Gestion des déchets",
-    score: 650,
+    metric: "greenmetric_ws_score",
+    label: "Waste",
     max: 1800,
-    percentage: 36.1,
-    status: "Sous-performant",
   },
   {
     code: "WR",
-    label: "Gestion de l'eau",
-    score: 437.5,
+    metric: "greenmetric_wr_score",
+    label: "Water",
     max: 1000,
-    percentage: 43.8,
-    status: "Sous-performant",
   },
   {
     code: "TR",
-    label: "Transport",
-    score: 1022.5,
+    metric: "greenmetric_tr_score",
+    label: "Transportation",
     max: 1800,
-    percentage: 56.8,
-    status: "À renforcer",
   },
   {
     code: "ED",
-    label: "Éducation et recherche",
-    score: 1550,
+    metric: "greenmetric_ed_score",
+    label: "Education & Research",
     max: 1800,
-    percentage: 86.1,
-    status: "Solide",
   },
 ];
 
+const greenMetricPdfFallbackScores: Record<string, number> = {
+  greenmetric_si_score: 1225,
+  greenmetric_ec_score: 1375,
+  greenmetric_ws_score: 650,
+  greenmetric_wr_score: 437.5,
+  greenmetric_tr_score: 1022.5,
+  greenmetric_ed_score: 1550,
+};
+
 const greenMetricPdfPhases: GreenMetricPdfPhase[] = [
   {
-    title: "Phase 1 — Politiques et gains rapides (Mois 1-3) — +300 pts",
-    points: "+300 pts",
+    title: "Phase 1 — Politiques et Gains Rapides",
+    period: "Mois 1-3",
+    targetPoints: 300,
+    targetCost: "145K TND",
+    totalNote:
+      "Phase 1 totals: +630 pts available; we target +300 (selection of strongest), 145K TND",
     actions: [
       {
-        action: "Interdiction du plastique à usage unique (décret UCAR)",
-        impact: "WS.2 +200 pts",
+        id: "P1.1",
+        action:
+          "Interdiction du plastique à usage unique sur l'ensemble des 33 établissements (décret UCAR Présidence)",
+        category: "WS.2",
+        impact: 200,
         cost: "0 TND",
         delay: "1 semaine",
       },
       {
-        action: "Bacs de tri colorés dans les 33 établissements",
-        impact: "WS.1 + WS.4 +150 pts",
+        id: "P1.2",
+        action:
+          "Bacs de tri colorés (papier / plastique / verre / organique / toxique) dans les 33 établissements avec signalétique standardisée",
+        category: "WS.1 + WS.4",
+        impact: 150,
         cost: "100K TND",
         delay: "1 mois",
       },
       {
-        action: "Programme de tests de qualité de l'eau (FSB)",
-        impact: "WR.5 +150 pts",
+        id: "P1.3",
+        action:
+          "Programme trimestriel de tests de qualité de l'eau, exécuté par les laboratoires de chimie de la FSB",
+        category: "WR.5",
+        impact: 150,
         cost: "15K TND/an",
         delay: "Immédiat",
       },
       {
-        action: "Formalisation cellule coordination développement durable",
-        impact: "ED.13 +30 pts",
+        id: "P1.4",
+        action:
+          "Formalisation par décret de la cellule de coordination développement durable à la Présidence UCAR",
+        category: "ED.13",
+        impact: 30,
         cost: "0 TND",
         delay: "1 mois",
       },
       {
-        action: "Cartographie standardisée des 33 campus",
-        impact: "SI.1-5 +100 pts",
+        id: "P1.5",
+        action:
+          "Cartographie standardisée des 33 campus (surface, bâtiments, espaces verts, plans d'eau)",
+        category: "SI.1, SI.2, SI.3, SI.5",
+        impact: 100,
         cost: "30K TND",
         delay: "2 mois",
       },
     ],
   },
   {
-    title: "Phase 2 — Infrastructure (Mois 4-8) — +400 pts",
-    points: "+400 pts",
+    title: "Phase 2 — Infrastructure",
+    period: "Mois 4-8",
+    targetPoints: 400,
+    targetCost: "240K TND",
+    totalNote: "Phase 2 totals: +650 pts available; we target +400, 240K TND",
     actions: [
       {
-        action: "Robinetterie économe (15 établissements pilotes)",
-        impact: "WR.3 +100 pts",
+        id: "P2.1",
+        action:
+          "Robinetterie économe (mitigeurs, chasses double-flux, urinoirs sans eau) sur 15 établissements pilotes",
+        category: "WR.3",
+        impact: 100,
         cost: "75K TND",
         delay: "4 mois",
       },
       {
-        action: "Récupération d'eau de pluie (10 établissements)",
-        impact: "WR.2 +100 pts",
+        id: "P2.2",
+        action:
+          "Système de récupération d'eau de pluie (toitures + citernes) sur 10 établissements",
+        category: "WR.2",
+        impact: 100,
         cost: "100K TND",
         delay: "6 mois",
       },
       {
-        action: "Compostage cafétérias (10 plus grands établissements)",
-        impact: "WS.3 +200 pts",
+        id: "P2.3",
+        action:
+          "Compostage des déchets de cafétéria sur les 10 plus grands établissements",
+        category: "WS.3",
+        impact: 200,
         cost: "50K TND",
         delay: "5 mois",
       },
       {
-        action: "Trous d'infiltration (volontaires étudiants)",
-        impact: "WR.1 + SI.4 +50 pts",
+        id: "P2.4",
+        action:
+          "Trous d'infiltration biopore (volontaires étudiants) sur tous les sites",
+        category: "WR.1 + SI.4",
+        impact: 50,
         cost: "5K TND",
         delay: "2 mois",
       },
       {
-        action: "Collecte certifiée des e-déchets (UCAR)",
-        impact: "WS.5 +200 pts",
+        id: "P2.5",
+        action:
+          "Contrat de collecte et traitement certifié des e-déchets, géré par UCAR centrale",
+        category: "WS.5",
+        impact: 200,
         cost: "10K TND/an",
         delay: "3 mois",
       },
     ],
   },
   {
-    title: "Phase 3 — Mesure et reporting (Mois 9-12) — +240 pts",
-    points: "+240 pts",
+    title: "Phase 3 — Mesure et Reporting",
+    period: "Mois 9-12",
+    targetPoints: 240,
+    targetCost: "125K TND",
+    totalNote: "Phase 3 totals: +240 pts, 125K TND",
     actions: [
       {
-        action: "Compteurs intelligents énergie (10 établissements)",
-        impact: "EC.4 + EC.11 +100 pts",
+        id: "P3.1",
+        action:
+          "Compteurs intelligents d'énergie sur 10 établissements (mesure mensuelle par bâtiment)",
+        category: "EC.4 + EC.11",
+        impact: 100,
         cost: "100K TND",
         delay: "4 mois",
       },
       {
-        action: "Audit complet des déchets",
-        impact: "Base WS +100 pts",
+        id: "P3.2",
+        action:
+          "Audit complet des déchets sur les 33 établissements (établir baseline tous types)",
+        category: "Base WS",
+        impact: 100,
         cost: "20K TND",
         delay: "3 mois",
       },
       {
-        action: "Formation 33 référents GreenMetric",
-        impact: "Qualité dossier +40 pts",
+        id: "P3.3",
+        action:
+          "Formation des 33 référents GreenMetric par établissement (collecte de données + dossiers de preuve)",
+        category: "Qualité dossier",
+        impact: 40,
         cost: "5K TND",
         delay: "2 mois",
       },
     ],
   },
+];
+
+const greenMetricBudgetRows = [
+  ["Phase 1", "+300", "145K TND", "+300 / 145K TND"],
+  ["Phase 2", "+400", "240K TND", "+700 / 385K TND"],
+  ["Phase 3", "+240", "125K TND", "+940 / 510K TND"],
+  ["Total", "+940", "~510K TND", "~1.5M TND Année 1"],
+];
+
+const greenMetricFundingSources = [
+  [
+    "RESPIRE Composante 1 (Banque mondiale, $70M alloués infrastructure verte)",
+    "bacs, eau, énergie, e-waste : ~30% du budget potentiellement éligible. Lien indirect — RESPIRE finance les infrastructures, qui améliorent GreenMetric. Honnête.",
+  ],
+  ["Budget MESRS maintenance", "robinetterie, audits, tests"],
+  [
+    "Volontariat étudiants",
+    "biopores, sensibilisation, sortie de programmes 3ZERO",
+  ],
+  ["Budget UCAR opérationnel", "formation, coordination, suivi"],
+];
+
+const greenMetricSequencing = [
+  [
+    "Why Phase 1 first",
+    "Decree-driven actions (single-use plastic ban, cellule formalisation) cost zero and signal commitment. Quick wins build momentum and demonstrate the system works.",
+  ],
+  [
+    "Why infrastructure (Phase 2) before measurement (Phase 3)",
+    "You can't measure what you haven't installed. Smart meters before smart metering.",
+  ],
+  [
+    "Why the policy decree at week 1",
+    "It's the single highest-impact zero-cost action. WS.2 contributes 300 max; we capture 200 with a decree alone.",
+  ],
+];
+
+const greenMetricDependencies = [
+  [
+    "P1.1 → P1.2",
+    "P1.1 (plastic ban decree) enables P1.2 (recycling bins) — without ban, bins are decorative",
+  ],
+  [
+    "P2.5 → WS.5",
+    "P2.5 (e-waste contract) enables WS.5 score — needs licensed handler",
+  ],
+  [
+    "P3.1 → EC.4",
+    "P3.1 (smart meters) enables EC.4 measurement — needed for EC point gain",
+  ],
+  [
+    "P3.3 → evidence quality",
+    "P3.3 (referents training) multiplies all evidence quality — last because referents need real programs to document",
+  ],
 ];
 
 function safeSegment(value: string) {
@@ -383,166 +504,597 @@ function generateDemoInstitutionReport(period: string, type: string) {
   });
 }
 
+function roundOne(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function strategyStatusFor(percentage: number) {
+  if (percentage > 75) return "Solide";
+  if (percentage >= 50) return "À renforcer";
+  return "Sous-performant";
+}
+
+function strategyStatusColor(status: string): [number, number, number] {
+  if (status === "Solide") return jadePrimary;
+  if (status === "À renforcer") return [158, 120, 42];
+  return [156, 64, 54];
+}
+
+function fallbackGreenMetricCategories() {
+  return greenMetricCategoryDefinitions.map((category) => {
+    const score = greenMetricPdfFallbackScores[category.metric] ?? 0;
+    const percentage = roundOne((score / category.max) * 100);
+
+    return {
+      ...category,
+      score,
+      percentage,
+      status: strategyStatusFor(percentage),
+    };
+  });
+}
+
+async function loadGreenMetricPdfCategories(supabase: ReportSupabase) {
+  const fallback = {
+    categories: fallbackGreenMetricCategories(),
+    sourceNote: "Données figées as of évaluation 2025.",
+  };
+
+  if (!supabase) {
+    return fallback;
+  }
+
+  try {
+    const institutionResult = await supabase
+      .from("institutions")
+      .select("id")
+      .eq("code", "400")
+      .maybeSingle();
+
+    if (institutionResult.error) {
+      throw institutionResult.error;
+    }
+
+    if (!institutionResult.data) {
+      throw new Error("Institution UCAR Présidence introuvable");
+    }
+
+    const requiredMetrics = greenMetricCategoryDefinitions.map(
+      (category) => category.metric,
+    );
+    const { data, error } = await supabase
+      .from("kpis")
+      .select("metric, value, period")
+      .eq("institution_id", institutionResult.data.id)
+      .in("metric", requiredMetrics)
+      .order("period", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    const metricValues = new Map<string, number>();
+    for (const row of (data ?? []) as GreenMetricSummaryKpiRow[]) {
+      if (!metricValues.has(row.metric)) {
+        metricValues.set(row.metric, Number(row.value ?? 0));
+      }
+    }
+
+    const missing = requiredMetrics.filter((metric) => !metricValues.has(metric));
+    if (missing.length > 0) {
+      throw new Error(`Données GreenMetric incomplètes: ${missing.join(", ")}`);
+    }
+
+    return {
+      categories: greenMetricCategoryDefinitions.map((category) => {
+        const score = metricValues.get(category.metric) ?? 0;
+        const percentage = roundOne((score / category.max) * 100);
+
+        return {
+          ...category,
+          score,
+          percentage,
+          status: strategyStatusFor(percentage),
+        };
+      }),
+      sourceNote: "Données Supabase · table kpis · dernière période disponible.",
+    };
+  } catch (error) {
+    console.warn(
+      "GreenMetric category scores fallback:",
+      error instanceof Error ? error.message : error,
+    );
+    return fallback;
+  }
+}
+
+function setDocTextColor(doc: jsPDF, color: [number, number, number]) {
+  doc.setTextColor(color[0], color[1], color[2]);
+}
+
+function setDocFillColor(doc: jsPDF, color: [number, number, number]) {
+  doc.setFillColor(color[0], color[1], color[2]);
+}
+
+function setDocDrawColor(doc: jsPDF, color: [number, number, number]) {
+  doc.setDrawColor(color[0], color[1], color[2]);
+}
+
+function formatStrategyIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addAstariaMark(doc: jsPDF, x: number, y: number, size: number) {
+  setDocFillColor(doc, jadeDeep);
+  doc.roundedRect(x, y, size, size, 2.4, 2.4, "F");
+  setDocFillColor(doc, jadePrimary);
+  doc.roundedRect(x + 1.1, y + 1.1, size - 2.2, size - 2.2, 2, 2, "F");
+  setDocDrawColor(doc, jadeSoft);
+  doc.setLineWidth(0.8);
+  doc.line(x + size * 0.25, y + size * 0.76, x + size * 0.77, y + size * 0.27);
+  setDocFillColor(doc, jadeSoft);
+  doc.ellipse(x + size * 0.38, y + size * 0.63, size * 0.1, size * 0.045, "F");
+  doc.ellipse(x + size * 0.52, y + size * 0.5, size * 0.1, size * 0.045, "F");
+  doc.ellipse(x + size * 0.66, y + size * 0.37, size * 0.1, size * 0.045, "F");
+}
+
+function strategyEyebrow(doc: jsPDF, text: string, x: number, y: number) {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  setDocTextColor(doc, jadePrimary);
+  doc.text(text.toUpperCase(), x, y);
+}
+
+function strategyHeading(doc: jsPDF, title: string, y: number) {
+  doc.setFont("times", "bold");
+  doc.setFontSize(20);
+  setDocTextColor(doc, jadeDeep);
+  doc.text(title, 14, y);
+}
+
+function addStrategyPageHeader(doc: jsPDF, eyebrow: string, title: string) {
+  setDocFillColor(doc, jadeDeep);
+  doc.rect(0, 0, 210, 12, "F");
+  addAstariaMark(doc, 180, 18, 12);
+  strategyEyebrow(doc, eyebrow, 14, 22);
+  strategyHeading(doc, title, 32);
+  setDocDrawColor(doc, jadeSoft);
+  doc.setLineWidth(0.4);
+  doc.line(14, 36, 196, 36);
+}
+
+function addStrategyFooter(doc: jsPDF, isoDate: string) {
+  const pageCount = doc.getNumberOfPages();
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    setDocTextColor(doc, muted);
+    doc.text(`${page}/${pageCount} · Mission verte · UCAR · 2026 · ${isoDate}`, 14, 286);
+  }
+}
+
+function addStrategyCover(doc: jsPDF, generatedAt: Date, dateText: string) {
+  setDocFillColor(doc, [247, 250, 248]);
+  doc.rect(0, 0, 210, 297, "F");
+  setDocFillColor(doc, jadeDeep);
+  doc.rect(0, 0, 210, 58, "F");
+  setDocFillColor(doc, jadeSoft);
+  doc.rect(0, 58, 210, 2.4, "F");
+
+  addAstariaMark(doc, 14, 84, 24);
+  strategyEyebrow(doc, "UCAR GreenMetric", 14, 122);
+  doc.setFont("times", "bold");
+  doc.setFontSize(29);
+  setDocTextColor(doc, jadeDeep);
+  doc.text("Plan stratégique GreenMetric", 14, 140);
+  doc.text("UCAR · 2026", 14, 154);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(14);
+  setDocTextColor(doc, muted);
+  doc.text("Vers le top 500 d'ici 2027", 14, 169);
+  setDocFillColor(doc, jadeGlow);
+  doc.rect(14, 180, 68, 1.2, "F");
+
+  setDocFillColor(doc, [235, 243, 237]);
+  doc.roundedRect(14, 194, 182, 36, 4, 4, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  setDocTextColor(doc, jadeDeep);
+  doc.text("Édition", 22, 208);
+  doc.setFont("helvetica", "normal");
+  setDocTextColor(doc, ink);
+  doc.text(dateText, 52, 208);
+  doc.setFont("helvetica", "bold");
+  setDocTextColor(doc, jadeDeep);
+  doc.text("Mission", 22, 220);
+  doc.setFont("helvetica", "normal");
+  setDocTextColor(doc, ink);
+  doc.text("#688 → top 500 · +940 pts · ~1,5M TND · 12 mois", 52, 220);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  setDocTextColor(doc, muted);
+  doc.text(
+    "Préparé par Astaria, agente stratégique de la Présidence UCAR",
+    14,
+    260,
+  );
+  doc.text(formatStrategyIsoDate(generatedAt), 14, 270);
+}
+
+function addSummaryCards(doc: jsPDF) {
+  const cards = [
+    ["Position actuelle", "#688 mondial · 6 260/10 000 (62,6%) · #1 en Tunisie"],
+    ["Cible", "~7 200 points (+940) · top 500 d'ici fin 2026"],
+    ["Investissement", "~1,5M TND Année 1"],
+    ["Calendrier", "12 mois, en 3 phases"],
+    [
+      "Alignement financement",
+      "RESPIRE Composante 1 (lien indirect, ~30% éligible)",
+    ],
+  ];
+
+  autoTable(doc, {
+    startY: 48,
+    head: [["Indicateur", "Synthèse exécutive"]],
+    body: cards,
+    theme: "grid",
+    margin: { left: 14, right: 14 },
+    headStyles: { fillColor: jadeDeep, textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [246, 250, 247] },
+    styles: {
+      cellPadding: 4,
+      font: "helvetica",
+      fontSize: 10,
+      lineColor: [221, 231, 224],
+      lineWidth: 0.15,
+      textColor: ink,
+    },
+    columnStyles: {
+      0: { cellWidth: 52, fontStyle: "bold", textColor: jadeDeep },
+      1: { cellWidth: 130 },
+    },
+  });
+}
+
+function addCategoryTable(
+  doc: jsPDF,
+  categories: GreenMetricPdfCategory[],
+  sourceNote: string,
+) {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  setDocTextColor(doc, muted);
+  doc.text(sourceNote, 14, 46);
+
+  autoTable(doc, {
+    startY: 56,
+    head: [["Code", "Catégorie", "Score", "Max", "%", "Statut"]],
+    body: categories.map((category) => [
+      category.code,
+      `${category.code} · ${category.label}`,
+      formatNumber(category.score),
+      formatNumber(category.max),
+      `${formatNumber(category.percentage)}%`,
+      category.status,
+    ]),
+    theme: "grid",
+    margin: { left: 14, right: 14 },
+    headStyles: { fillColor: jadeDeep, textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [246, 250, 247] },
+    styles: {
+      cellPadding: 3,
+      font: "helvetica",
+      fontSize: 9,
+      lineColor: [221, 231, 224],
+      lineWidth: 0.15,
+      textColor: ink,
+    },
+    columnStyles: {
+      0: { cellWidth: 16, fontStyle: "bold", halign: "center" },
+      1: { cellWidth: 70 },
+      2: { cellWidth: 24, halign: "right" },
+      3: { cellWidth: 24, halign: "right" },
+      4: { cellWidth: 18, halign: "right" },
+      5: { cellWidth: 30, halign: "center" },
+    },
+    didParseCell: (data: CellHookData) => {
+      if (data.section === "body" && data.column.index === 5) {
+        const fillColor = strategyStatusColor(String(data.cell.raw));
+        data.cell.styles.fillColor = fillColor;
+        data.cell.styles.textColor = [255, 255, 255];
+        data.cell.styles.fontStyle = "bold";
+      }
+    },
+  });
+}
+
+function addPhasePage(doc: jsPDF, phase: GreenMetricPdfPhase, pageLabel: string) {
+  doc.addPage();
+  addStrategyPageHeader(doc, pageLabel, `${phase.title} (${phase.period})`);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  setDocTextColor(doc, jadePrimary);
+  doc.text(`Target: +${formatNumber(phase.targetPoints)} pts · ${phase.targetCost}`, 14, 48);
+
+  autoTable(doc, {
+    startY: 58,
+    head: [["ID", "Action", "Catégorie", "Impact", "Coût", "Délai"]],
+    body: phase.actions.map((action) => [
+      action.id,
+      action.action,
+      action.category,
+      `+${formatNumber(action.impact)}`,
+      action.cost,
+      action.delay,
+    ]),
+    theme: "grid",
+    margin: { left: 12, right: 12 },
+    headStyles: { fillColor: jadeDeep, textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [246, 250, 247] },
+    styles: {
+      cellPadding: 2.2,
+      font: "helvetica",
+      fontSize: 7.8,
+      lineColor: [221, 231, 224],
+      lineWidth: 0.12,
+      overflow: "linebreak",
+      textColor: ink,
+    },
+    columnStyles: {
+      0: { cellWidth: 15, fontStyle: "bold", textColor: jadeDeep },
+      1: { cellWidth: 84 },
+      2: { cellWidth: 29 },
+      3: { cellWidth: 18, halign: "right" },
+      4: { cellWidth: 24, halign: "right" },
+      5: { cellWidth: 16 },
+    },
+  });
+
+  const y = finalY(doc, 150) + 10;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  setDocTextColor(doc, muted);
+  doc.text(phase.totalNote, 14, y);
+}
+
 async function generateGreenMetricStrategyReport(
   supabase: ReportSupabase,
   period: string,
 ) {
   const generatedAt = new Date();
   const dateText = formatDateLong(generatedAt);
+  const isoDate = formatStrategyIsoDate(generatedAt);
   const filename = "Plan-Strategique-GreenMetric-UCAR-2026.pdf";
+  const { categories, sourceNote } = await loadGreenMetricPdfCategories(supabase);
   const doc = new jsPDF();
 
-  doc.setFillColor(13, 13, 15);
-  doc.rect(0, 0, 210, 297, "F");
-  doc.setTextColor(249, 250, 251);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(26);
-  doc.text("Plan Stratégique GreenMetric", 14, 72);
-  doc.setFontSize(16);
-  doc.text("Université de Carthage · 2026", 14, 88);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.setTextColor(212, 212, 216);
-  doc.text("Généré par Tanit · Plateforme intelligente UCAR", 14, 104);
-  doc.text(dateText, 14, 114);
-  doc.setDrawColor(249, 115, 22);
-  doc.setLineWidth(1.2);
-  doc.line(14, 128, 116, 128);
-  doc.setFontSize(10);
-  doc.setTextColor(161, 161, 170);
-  doc.text("Objectif: top 500 mondial en 12 mois", 14, 146);
-  doc.text("Priorités: déchets et eau", 14, 154);
+  addStrategyCover(doc, generatedAt, dateText);
 
   doc.addPage();
-  sectionTitle(doc, "Section 1 — État actuel", 20);
-  let y = writeLines(
-    doc,
-    [
-      "UCAR: #688 mondial, #1 Tunisie",
-      "Score 6 260 / 10 000",
-      "Les catégories faibles sont la gestion des déchets et la gestion de l'eau.",
-    ],
-    14,
-    32,
-  );
-
-  autoTable(doc, {
-    startY: y + 4,
-    head: [["Code", "Catégorie", "Score / max", "Pourcentage", "Statut"]],
-    body: greenMetricPdfCategories.map((category) => [
-      category.code,
-      category.label,
-      `${formatNumber(category.score)} / ${formatNumber(category.max)}`,
-      `${formatNumber(category.percentage)}%`,
-      category.status,
-    ]),
-    theme: "striped",
-    headStyles: { fillColor: [28, 93, 84] },
-    styles: { fontSize: 9 },
-  });
-
-  y = finalY(doc, 82) + 14;
-  sectionTitle(doc, "Section 2 — Objectif", y);
-  y = writeLines(
-    doc,
-    [
-      "Cible: Top 500 mondial (~7 200 points)",
-      "Écart: +940 points",
-      "Horizon: 12 mois",
-    ],
-    14,
-    y + 12,
-  );
-
-  doc.addPage();
-  sectionTitle(doc, "Section 3 — Plan en 3 phases", 20);
-  y = 32;
-  for (const phase of greenMetricPdfPhases) {
-    y = ensurePageSpace(doc, y, 58);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(24, 24, 27);
-    doc.text(phase.title, 14, y);
-
-    autoTable(doc, {
-      startY: y + 6,
-      head: [["Action", "Impact", "Coût", "Délai"]],
-      body: phase.actions.map((action) => [
-        action.action,
-        action.impact,
-        action.cost,
-        action.delay,
-      ]),
-      theme: "striped",
-      headStyles: { fillColor: [249, 115, 22] },
-      styles: { fontSize: 8.5, overflow: "linebreak", cellPadding: 2.2 },
-      columnStyles: {
-        0: { cellWidth: 86 },
-        1: { cellWidth: 42 },
-        2: { cellWidth: 26 },
-        3: { cellWidth: 24 },
-      },
-    });
-    y = finalY(doc, y + 48) + 12;
-  }
-
-  doc.addPage();
-  sectionTitle(doc, "Section 4 — Investissement et financement", 20);
-  y = writeLines(
-    doc,
-    [
-      "Total Année 1: ~1.5M TND",
-      "Sources possibles:",
-      "• RESPIRE Composante 1 (Banque mondiale): bacs, eau, énergie — alignement indirect",
-      "• Budget MESRS maintenance: robinetterie, audits, tests",
-      "• Volontariat étudiants: trous d'infiltration, sensibilisation",
-    ],
-    14,
-    32,
-  );
-
-  y = ensurePageSpace(doc, y + 10, 45);
-  sectionTitle(doc, "Section 5 — Projection", y);
-  y = writeLines(
-    doc,
-    [
-      "Score actuel 2025: 6 260",
-      "Score projeté 2026: 7 200",
-      "Position projetée: top 500 mondial",
-      "Maintien du rang #1 Tunisie",
-    ],
-    14,
-    y + 12,
-  );
-
-  y = ensurePageSpace(doc, y + 10, 70);
-  sectionTitle(doc, "Section 6 — Notes méthodologiques", y);
-  y = writeLines(
-    doc,
-    [
-      "• Méthodologie UI GreenMetric 2025",
-      "• Benchmarks top 100 (Universitas Indonesia, Wageningen, Nottingham, Telkom)",
-      "• Coûts estimés sur projets comparables Tunisie/international",
-      "• Le lien GreenMetric ↔ RESPIRE est indirect : les infrastructures qui améliorent le score correspondent aux critères d'investissement de RESPIRE Composante 1",
-    ],
-    14,
-    y + 12,
-  );
-
-  y = ensurePageSpace(doc, y + 10, 45);
-  sectionTitle(doc, "Section 7 — Sources", y);
+  addStrategyPageHeader(doc, "Page 2 · Executive summary", "Synthèse exécutive");
+  addSummaryCards(doc);
+  let y = finalY(doc, 120) + 14;
   writeLines(
     doc,
     [
-      "• uigreenmetric.com (2025)",
-      "• UCAR — base de données Tanit (33 établissements)",
-      "• ITES/IACE, INS Q4 2025 (contexte national)",
+      "Move UCAR from #688 mondial to top 500 by end of 2026 cycle.",
+      "Current score: 6 260 / 10 000. Target: ~7 200 (+940 points).",
+      "Investment year-1: ~1.5M TND. Funding alignment: RESPIRE Composante 1 (indirect).",
     ],
     14,
-    y + 12,
+    y,
+    { width: 176, lineHeight: 6 },
   );
 
-  addFooter(doc, dateText);
+  doc.addPage();
+  addStrategyPageHeader(
+    doc,
+    "Page 3 · État des lieux",
+    "État des lieux par catégorie",
+  );
+  addCategoryTable(doc, categories, sourceNote);
+
+  addPhasePage(doc, greenMetricPdfPhases[0], "Page 4 · Phase 1");
+  addPhasePage(doc, greenMetricPdfPhases[1], "Page 5 · Phase 2");
+  addPhasePage(doc, greenMetricPdfPhases[2], "Page 6 · Phase 3");
+
+  doc.addPage();
+  addStrategyPageHeader(doc, "Page 7 · Budget", "Budget et financement");
+  autoTable(doc, {
+    startY: 48,
+    head: [["Phase", "Points", "Coût", "Cumulatif"]],
+    body: greenMetricBudgetRows,
+    theme: "grid",
+    margin: { left: 14, right: 14 },
+    headStyles: { fillColor: jadeDeep, textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [246, 250, 247] },
+    styles: {
+      cellPadding: 3,
+      font: "helvetica",
+      fontSize: 9,
+      lineColor: [221, 231, 224],
+      lineWidth: 0.15,
+      textColor: ink,
+    },
+    columnStyles: {
+      1: { halign: "right" },
+      2: { halign: "right" },
+      3: { halign: "right" },
+    },
+    didParseCell: (data: CellHookData) => {
+      if (
+        data.section === "body" &&
+        data.row.index === greenMetricBudgetRows.length - 1
+      ) {
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.fillColor = [235, 243, 237];
+        data.cell.styles.textColor = jadeDeep;
+      }
+    },
+  });
+
+  y = finalY(doc, 100) + 12;
+  strategyEyebrow(doc, "Sources de financement", 14, y);
+  autoTable(doc, {
+    startY: y + 6,
+    head: [["Source", "Utilisation / logique"]],
+    body: greenMetricFundingSources,
+    theme: "grid",
+    margin: { left: 14, right: 14 },
+    headStyles: { fillColor: jadeDeep, textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [246, 250, 247] },
+    styles: {
+      cellPadding: 2.6,
+      font: "helvetica",
+      fontSize: 8.2,
+      lineColor: [221, 231, 224],
+      lineWidth: 0.12,
+      overflow: "linebreak",
+      textColor: ink,
+    },
+    columnStyles: {
+      0: { cellWidth: 62, fontStyle: "bold", textColor: jadeDeep },
+      1: { cellWidth: 120 },
+    },
+  });
+  y = finalY(doc, 170) + 10;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  setDocTextColor(doc, muted);
+  doc.text(
+    "Add organisational overhead, contingency, training, evidence preparation: ~1.5M TND total Année 1.",
+    14,
+    y,
+  );
+
+  doc.addPage();
+  addStrategyPageHeader(doc, "Page 8 · Outcome", "Projected outcome");
+  autoTable(doc, {
+    startY: 50,
+    head: [["Year", "Score", "Mondial", "National"]],
+    body: [
+      ["2025 (current)", "6 260", "#688", "#1"],
+      ["2026 (post-plan)", "~7 200", "top 500", "#1"],
+      ["2027 (sustained)", "~7 800", "top 400 (stretch)", "#1"],
+    ],
+    theme: "grid",
+    margin: { left: 14, right: 14 },
+    headStyles: { fillColor: jadeDeep, textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [246, 250, 247] },
+    styles: {
+      cellPadding: 5,
+      font: "helvetica",
+      fontSize: 10,
+      lineColor: [221, 231, 224],
+      lineWidth: 0.15,
+      textColor: ink,
+    },
+    columnStyles: {
+      1: { halign: "right" },
+      2: { halign: "center" },
+      3: { halign: "center" },
+    },
+  });
+  y = finalY(doc, 110) + 20;
+  doc.setFont("times", "italic");
+  doc.setFontSize(17);
+  setDocTextColor(doc, jadeDeep);
+  doc.text(
+    "La première université tunisienne à franchir le top 500 mondial sur la durabilité.",
+    14,
+    y,
+    { maxWidth: 174 },
+  );
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  setDocTextColor(doc, muted);
+  doc.text("Defendable, measurable, achievable.", 14, y + 24);
+
+  doc.addPage();
+  addStrategyPageHeader(
+    doc,
+    "Page 9 · Sources",
+    "Sources et méthodologie",
+  );
+  autoTable(doc, {
+    startY: 48,
+    head: [["Sources"]],
+    body: [
+      ["uigreenmetric.com · Édition 2025"],
+      ["Neos Brief 05 — framework UCAR scoring (avril 2026)"],
+      ["Validation terrain · ENSTAB Borj Cédria · 25-26 avril 2026"],
+      ["INSAT TEEP · 206kW solaire (référence régionale)"],
+      ["data.gov.tn · datasets éducation officiels"],
+      ["Pr. Nadia Mzoughi Aguir · directives Présidence UCAR"],
+    ],
+    theme: "grid",
+    margin: { left: 14, right: 14 },
+    headStyles: { fillColor: jadeDeep, textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [246, 250, 247] },
+    styles: {
+      cellPadding: 2.4,
+      font: "helvetica",
+      fontSize: 8.4,
+      lineColor: [221, 231, 224],
+      lineWidth: 0.12,
+      textColor: ink,
+    },
+  });
+
+  y = finalY(doc, 98) + 10;
+  strategyEyebrow(doc, "Sequencing logic", 14, y);
+  autoTable(doc, {
+    startY: y + 6,
+    head: [["Point", "Méthode"]],
+    body: greenMetricSequencing,
+    theme: "grid",
+    margin: { left: 14, right: 14 },
+    headStyles: { fillColor: jadeDeep, textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [246, 250, 247] },
+    styles: {
+      cellPadding: 2.2,
+      font: "helvetica",
+      fontSize: 7.6,
+      lineColor: [221, 231, 224],
+      lineWidth: 0.12,
+      overflow: "linebreak",
+      textColor: ink,
+    },
+    columnStyles: {
+      0: { cellWidth: 52, fontStyle: "bold", textColor: jadeDeep },
+      1: { cellWidth: 130 },
+    },
+  });
+
+  y = finalY(doc, 160) + 10;
+  strategyEyebrow(doc, "Action dependencies", 14, y);
+  autoTable(doc, {
+    startY: y + 6,
+    head: [["Dépendance", "Logique"]],
+    body: greenMetricDependencies,
+    theme: "grid",
+    margin: { left: 14, right: 14 },
+    headStyles: { fillColor: jadeDeep, textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [246, 250, 247] },
+    styles: {
+      cellPadding: 2.1,
+      font: "helvetica",
+      fontSize: 7.3,
+      lineColor: [221, 231, 224],
+      lineWidth: 0.12,
+      overflow: "linebreak",
+      textColor: ink,
+    },
+    columnStyles: {
+      0: { cellWidth: 42, fontStyle: "bold", textColor: jadeDeep },
+      1: { cellWidth: 140 },
+    },
+  });
+
+  addStrategyFooter(doc, isoDate);
   const pdf = doc.output("arraybuffer");
 
   if (supabase) {

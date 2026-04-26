@@ -9,9 +9,24 @@ import { getMastraUrl } from "@/lib/mastra";
 
 export const dynamic = "force-dynamic";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "https://rooted-ai-omega.vercel.app",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Max-Age": "86400",
+};
+
 type ChatRequest = {
   messages?: unknown;
 };
+
+function withCors(response: Response) {
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    response.headers.set(key, value);
+  }
+
+  return response;
+}
 
 function mastraHeaders(): HeadersInit {
   const headers: HeadersInit = {
@@ -131,6 +146,10 @@ async function streamAstariaAgent(messages: unknown[]) {
   });
 }
 
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: corsHeaders });
+}
+
 export async function POST(request: Request) {
   try {
     const body = await readJsonBody<ChatRequest>(request);
@@ -186,9 +205,10 @@ export async function POST(request: Request) {
       stream,
       headers: {
         "Cache-Control": "no-cache",
+        ...corsHeaders,
       },
     });
   } catch (error) {
-    return handleApiError(error);
+    return withCors(handleApiError(error));
   }
 }

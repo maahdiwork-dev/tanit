@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowRight, Check, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { SideSheet } from "@/components/side-sheet";
 import type { GreenMetricCategory, GreenMetricCategoryCode } from "@/types/api";
@@ -109,17 +108,25 @@ export function CategoryDetailSheet({
   category: GreenMetricCategory | null;
   onClose: () => void;
 }) {
-  const router = useRouter();
   if (!category) return null;
 
   const info = CATEGORY_INFO[category.code];
   const statusLabel = STATUS_LABEL[category.status] ?? category.status;
 
-  function askTanit() {
+  function askAstaria() {
     if (!category) return;
-    const question = `Que recommandes-tu pour la catégorie GreenMetric ${category.code} (${category.label})? Notre score est ${category.score}/${category.max} (${category.percentage}%).`;
     onClose();
-    router.push(`/chat?prefill=${encodeURIComponent(question)}`);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("astaria_prefill", {
+          detail: `Madame la Présidente, à propos de la catégorie ${category.code} — ${category.label}. Notre score: ${category.score}/${category.max} (${category.percentage}%). Que recommandez-vous comme priorité?`,
+        }),
+      );
+      window.setTimeout(() => {
+        const target = document.getElementById("astaria-chat");
+        target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
   }
 
   return (
@@ -169,7 +176,7 @@ export function CategoryDetailSheet({
         </div>
         <div className="h-1.5 mt-4 bg-zinc-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-blue-500"
+            className="h-full bg-[#4A7C59]"
             style={{ width: `${category.percentage}%` }}
           />
         </div>
@@ -187,7 +194,7 @@ export function CategoryDetailSheet({
                 className="flex items-start justify-between gap-3 px-3 py-2.5 rounded-md border border-zinc-200 bg-white"
               >
                 <div className="min-w-0">
-                  <div className="font-mono text-[12px] text-blue-700">
+                  <div className="font-mono text-[12px] text-[#2D4A35]">
                     {indicator.code}
                   </div>
                   <div className="text-[12.5px] text-zinc-800 mt-0.5 leading-tight">
@@ -237,11 +244,11 @@ export function CategoryDetailSheet({
 
       <div className="px-7 py-5 sticky bottom-0 bg-white/95 backdrop-blur border-t border-zinc-200">
         <button
-          onClick={askTanit}
-          className="w-full h-11 rounded-md text-white font-medium text-[13.5px] inline-flex items-center justify-center gap-2 brand-glow"
-          style={{ background: "linear-gradient(180deg,#3b82f6, #1B487E)" }}
+          onClick={askAstaria}
+          className="w-full h-11 rounded-md text-white font-medium text-[13.5px] inline-flex items-center justify-center gap-2 olive-glow"
+          style={{ background: "linear-gradient(180deg,#4A7C59, #2D4A35)" }}
         >
-          Demander à Tanit sur cette catégorie
+          Demander à Astaria sur cette catégorie
           <ArrowRight size={14} />
         </button>
       </div>
