@@ -7,7 +7,6 @@ import {
   getTicket,
   postTicketMessage,
   subscribeToStore,
-  tanitProcessPhoto,
   type TicketDetail,
   type TicketMessage,
 } from "@/lib/demo-mocks";
@@ -67,6 +66,8 @@ export function TicketDetailSheet({
   );
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const tanitMsgsAtUploadRef = useRef<number>(0);
+  const processingTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +99,29 @@ export function TicketDetailSheet({
     }
   }, [detail?.messages.length]);
 
+  // Clear "processing" state when a NEW Tanit message arrives after upload start.
+  useEffect(() => {
+    if (photoPhase !== "processing") return;
+    const tanitCount = (detail?.messages ?? []).filter(
+      (m) => m.sender === "tanit",
+    ).length;
+    if (tanitCount > tanitMsgsAtUploadRef.current) {
+      setPhotoPhase("idle");
+      if (processingTimeoutRef.current) {
+        window.clearTimeout(processingTimeoutRef.current);
+        processingTimeoutRef.current = null;
+      }
+    }
+  }, [detail?.messages, photoPhase]);
+
+  useEffect(() => {
+    return () => {
+      if (processingTimeoutRef.current) {
+        window.clearTimeout(processingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   if (!ticketId) return null;
 
   async function send() {
@@ -119,6 +143,12 @@ export function TicketDetailSheet({
 
   async function uploadPhoto(file: File) {
     if (!detail || photoPhase !== "idle") return;
+
+    // Snapshot the count of Tanit messages BEFORE we upload
+    tanitMsgsAtUploadRef.current = detail.messages.filter(
+      (m) => m.sender === "tanit",
+    ).length;
+
     setPhotoPhase("uploading");
     const url = URL.createObjectURL(file);
     await postTicketMessage(detail.ticket.id, {
@@ -130,10 +160,12 @@ export function TicketDetailSheet({
     });
 
     setPhotoPhase("processing");
-    // Simulated streaming OCR delay
-    await new Promise((resolve) => window.setTimeout(resolve, 1800));
-    await tanitProcessPhoto(detail.ticket.id);
-    setPhotoPhase("idle");
+
+    // Safety: clear "processing" after 12s even if no Tanit message lands
+    processingTimeoutRef.current = window.setTimeout(() => {
+      setPhotoPhase("idle");
+      processingTimeoutRef.current = null;
+    }, 12000);
   }
 
   const ticket = detail?.ticket;

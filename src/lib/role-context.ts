@@ -43,7 +43,11 @@ export const ROLE_USERS: RoleContext[] = [
   },
 ];
 
+// Role context lives in sessionStorage so each tab holds its own role
+// independently. Cross-tab realtime sync (notifications, tickets) lives in
+// a separate channel — see `lib/demo-mocks.ts` `subscribeToStore`.
 const STORAGE_KEY = "tanit_role_context";
+const LEGACY_STORAGE_KEY = "tanit_role_context";
 const EVENT_NAME = "tanit_role_context_change";
 
 const DEFAULT: RoleContext = ROLE_USERS[0];
@@ -51,7 +55,12 @@ const DEFAULT: RoleContext = ROLE_USERS[0];
 function readStorage(): RoleContext {
   if (typeof window === "undefined") return DEFAULT;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    // Migrate any legacy localStorage value into the per-tab session on first load.
+    const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy) {
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+    }
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT;
     const parsed = JSON.parse(raw) as RoleContext;
     return parsed;
@@ -62,7 +71,7 @@ function readStorage(): RoleContext {
 
 export function setRoleContext(ctx: RoleContext) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(ctx));
+  window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(ctx));
   window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: ctx }));
 }
 
@@ -77,15 +86,10 @@ export function useRoleContext(): RoleContext {
       const detail = (event as CustomEvent<RoleContext>).detail;
       if (detail) setCtx(detail);
     }
-    function onStorage(event: StorageEvent) {
-      if (event.key === STORAGE_KEY) setCtx(readStorage());
-    }
     window.addEventListener(EVENT_NAME, onChange);
-    window.addEventListener("storage", onStorage);
     return () => {
       window.clearTimeout(hydrateTimer);
       window.removeEventListener(EVENT_NAME, onChange);
-      window.removeEventListener("storage", onStorage);
     };
   }, []);
 
