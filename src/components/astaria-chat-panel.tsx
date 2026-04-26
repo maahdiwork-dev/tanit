@@ -4,6 +4,8 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Send } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { AstariaMark } from "@/components/astaria-mark";
 import { TanitCard } from "@/components/tanit-card";
@@ -149,8 +151,14 @@ export function AstariaChatPanel() {
                         Astaria
                       </span>
                     </div>
-                    <div className="rounded-lg rounded-tl-sm bg-white border border-[#4A7C59]/20 px-4 py-3 text-[13.5px] leading-relaxed text-zinc-800 olive-glow">
-                      {msg.content || (isStreamingThis ? "" : msg.content)}
+                    <div className="rounded-lg rounded-tl-sm bg-white border border-[#4A7C59]/20 px-4 py-3 olive-glow">
+                      {msg.content ? (
+                        <div className="prose-astaria">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {msg.content}
+                          </ReactMarkdown>
+                        </div>
+                      ) : null}
                       {isStreamingThis ? (
                         <span className="inline-flex gap-1 ml-1.5 align-middle">
                           <span className="typing-dot inline-block w-1.5 h-1.5 rounded-full bg-[#4A7C59]" />

@@ -4,7 +4,8 @@ import { Download, Radar, RefreshCw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
-import { AstariaChatPanel } from "@/components/astaria-chat-panel";
+import { AstariaChatSheet } from "@/components/astaria-chat-sheet";
+import { AstariaMark } from "@/components/astaria-mark";
 import { CategoryDetailSheet } from "@/components/category-detail-sheet";
 import { GreenMetricCategoryCard } from "@/components/greenmetric-category-card";
 import { GreenMetricComparisonTable } from "@/components/greenmetric-comparison-table";
@@ -184,9 +185,20 @@ function GreenMetricPageInner() {
     useState<GreenMetricCategory | null>(null);
   const [highlightedCode, setHighlightedCode] =
     useState<GreenMetricCategoryCode | null>(null);
+  const [astariaOpen, setAstariaOpen] = useState(false);
   const categoryRefs = useRef<
     Partial<Record<GreenMetricCategoryCode, HTMLDivElement | null>>
   >({});
+
+  // Prefill events fired from category-detail-sheet's "Demander à Astaria" CTA
+  // should also auto-open the chat sheet.
+  useEffect(() => {
+    function onPrefill() {
+      setAstariaOpen(true);
+    }
+    window.addEventListener("astaria_prefill", onPrefill);
+    return () => window.removeEventListener("astaria_prefill", onPrefill);
+  }, []);
 
   const loadSummary = useCallback(async () => {
     setLoading(true);
@@ -271,7 +283,16 @@ function GreenMetricPageInner() {
             Évaluation mondiale de durabilité — pilotée par Astaria
           </div>
         </div>
-        <StrategyButton phase={downloadPhase} onClick={generatePlan} />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setAstariaOpen(true)}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[#4A7C59]/40 bg-white px-4 text-[13px] font-semibold text-[#2D4A35] hover:bg-[#A8C4AE]/15 hover:border-[#4A7C59] hover:olive-glow transition"
+          >
+            <AstariaMark size={16} />
+            Parler à Astaria
+          </button>
+          <StrategyButton phase={downloadPhase} onClick={generatePlan} />
+        </div>
       </div>
 
       {error ? (
@@ -423,8 +444,6 @@ function GreenMetricPageInner() {
             </div>
           </section>
 
-          <AstariaChatPanel />
-
           <section>
             <div className="rounded-md border border-zinc-200 bg-white/70 p-5 text-[12.5px] leading-6 text-zinc-500">
               <span className="font-medium text-zinc-700">
@@ -444,6 +463,10 @@ function GreenMetricPageInner() {
       <CategoryDetailSheet
         category={openCategory}
         onClose={() => setOpenCategory(null)}
+      />
+      <AstariaChatSheet
+        open={astariaOpen}
+        onClose={() => setAstariaOpen(false)}
       />
     </div>
   );

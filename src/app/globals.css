@@ -320,6 +320,163 @@
   font-feature-settings: "ss01", "ss02";
 }
 
+/* Markdown rendering inside Astaria's chat replies — jade-themed prose. */
+.prose-astaria {
+  color: #27272a;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.prose-astaria > *:first-child {
+  margin-top: 0;
+}
+
+.prose-astaria > *:last-child {
+  margin-bottom: 0;
+}
+
+.prose-astaria h1,
+.prose-astaria h2,
+.prose-astaria h3,
+.prose-astaria h4 {
+  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+  color: #2d4a35;
+  font-weight: 600;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.prose-astaria h1 {
+  font-size: 19px;
+}
+
+.prose-astaria h2 {
+  font-size: 16.5px;
+}
+
+.prose-astaria h3 {
+  font-size: 15px;
+}
+
+.prose-astaria h4 {
+  font-size: 14px;
+}
+
+.prose-astaria p {
+  margin: 0 0 8px 0;
+}
+
+.prose-astaria ul,
+.prose-astaria ol {
+  margin: 0 0 8px 0;
+  padding-left: 1.4rem;
+}
+
+.prose-astaria ul {
+  list-style-type: disc;
+}
+
+.prose-astaria ol {
+  list-style-type: decimal;
+}
+
+.prose-astaria li {
+  margin-bottom: 3px;
+}
+
+.prose-astaria li::marker {
+  color: #4a7c59;
+}
+
+.prose-astaria strong {
+  font-weight: 600;
+  color: #18181b;
+}
+
+.prose-astaria em {
+  font-style: italic;
+}
+
+.prose-astaria code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  padding: 1px 5px;
+  background: rgba(168, 196, 174, 0.28);
+  color: #2d4a35;
+  border-radius: 4px;
+}
+
+.prose-astaria pre {
+  background: rgba(168, 196, 174, 0.18);
+  border: 1px solid rgba(74, 124, 89, 0.22);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 0 0 8px 0;
+  font-size: 12.5px;
+}
+
+.prose-astaria pre code {
+  background: none;
+  padding: 0;
+  color: #18181b;
+  font-size: 12.5px;
+}
+
+.prose-astaria blockquote {
+  border-left: 3px solid #4a7c59;
+  padding: 2px 0 2px 12px;
+  margin: 0 0 8px 0;
+  color: #52525b;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+.prose-astaria hr {
+  border: 0;
+  border-top: 1px solid #e4e4e7;
+  margin: 12px 0;
+}
+
+.prose-astaria table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 12.5px;
+  width: 100%;
+}
+
+.prose-astaria th {
+  background: rgba(168, 196, 174, 0.32);
+  color: #2d4a35;
+  font-weight: 600;
+  padding: 8px 12px;
+  border: 1px solid #e4e4e7;
+  text-align: left;
+}
+
+.prose-astaria td {
+  padding: 8px 12px;
+  border: 1px solid #e4e4e7;
+  vertical-align: top;
+}
+
+.prose-astaria tr:nth-child(even) td {
+  background: rgba(168, 196, 174, 0.08);
+}
+
+.prose-astaria a {
+  color: #2d4a35;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+
+.prose-astaria a:hover {
+  color: #4a7c59;
+}
+
 .bg-astaria-soft {
   background: linear-gradient(180deg, rgba(168, 196, 174, 0.18), rgba(168, 196, 174, 0.06));
 }
