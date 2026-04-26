@@ -1,8 +1,9 @@
 # Project Tanit
 
-> *L'institution n'attend plus la donnée — elle s'assure qu'elle arrive.*
+> The institution no longer waits for the data. It ensures the data arrives.
 
 **Live demo:** https://tanit-seven.vercel.app
+**Agent API:** https://tanit-agents-production.up.railway.app
 **Pitch site:** https://rooted-ai-omega.vercel.app
 **Architecture:** https://rooted-ai-omega.vercel.app/architecture
 **The team:** https://rooted-ai-omega.vercel.app/team
@@ -15,20 +16,20 @@ Submitted to **Hack4UCar 2026** · ENSTAB Borj Cédria · Université de Carthag
 
 Project Tanit is the **institutional intelligence platform** for the University of Carthage (UCAR) — 33 institutions, 32,000 students, 3,270 teaching staff, currently coordinated by 66 people manually collecting data via email and Excel.
 
-Tanit transforms UCAR from a **reactive system** (waits for data to arrive) into a **proactive, self-regulating system** (detects missing submissions, sends reminders, escalates delays, and helps humans unblock each other when things stall).
+Tanit transforms UCAR from a **reactive system** (waits for data to arrive) into a **proactive, self-regulating system** (detects missing submissions, sends reminders, escalates delays, and brings AI in to help humans when things stall).
 
 It runs on top of [`tanit-agents`](https://github.com/maahdiwork-dev/tanit-agents), the Mastra agent layer that powers two distinct agents:
 
-- **Tanit** — the platform agent (operational coordinator)
+- **Tanit** — the platform agent (operational coordinator across 33 institutions)
 - **Astaria** — the first **Rooted AI** specialist, built for Pr. Nadia Mzoughi Aguir on the **GreenMetric** strategic mission (UCAR is currently #688 worldwide; goal: top 500 by 2027)
 
 ---
 
-## The pitch in one screen
+## The pitch in one line
 
-> Nous ne faisons pas du traitement de données — nous transformons UCAR d'un système réactif en système proactif et auto-régulé.
+> We are not improving data processing — we are transforming UCAR from a reactive system into a proactive, self-regulating one.
 
-Tanit detects what's missing, sends the reminders, escalates when nobody acts, and brings AI in to help the human at the end of the chain. Real cascade. Real Supabase Realtime. Real Gemini OCR on a paper photograph.
+Tanit detects what's missing. Sends the reminders. Escalates when nobody acts. Brings AI in to help the human at the end of the chain. Real cascade. Real Supabase Realtime. Real Gemini OCR on a phone-shot photo of a paper printout.
 
 ---
 
@@ -36,12 +37,12 @@ Tanit detects what's missing, sends the reminders, escalates when nobody acts, a
 
 1. Open the [live dashboard](https://tanit-seven.vercel.app/dashboard) — Pr. Nadia's view across all 33 institutions
 2. Click any missing institution → audit trail sheet with full timeline
-3. Click *« Lancer le cycle de surveillance »* → real-time monitoring report + downloadable PDF
-4. Open `/chat` → ask Tanit anything in French (DeepSeek V3 via Mastra, real tool calls into Supabase)
-5. Open `/greenmetric` → Astaria's strategic chat panel (jade green, présidentiel French)
+3. Click **Run monitoring cycle** → real-time monitoring report + downloadable PDF
+4. Open `/chat` → ask Tanit anything in French or Arabic (DeepSeek V3 via Mastra, with real tool calls into Supabase)
+5. Open `/greenmetric` → Astaria's strategic chat panel (jade green, formal French register)
 6. Switch role via the topbar selector to **Yassine — Admin Staff · ENIB** → upload a phone photo → real Gemini Vision extracts KPIs → ticket resolves
 
-**The multi-role cascade:** open 4 tabs, set each to a different role (Yassine / Director / Dean / President), click the fast-forward FAB on the President tab → notifications cascade across all 4 tabs in real-time via Supabase `postgres_changes`.
+**The multi-role cascade:** open 4 tabs, set each to a different role (Yassine / Director / Dean / President), click the fast-forward FAB on the President tab → notifications cascade across all 4 tabs in real time via Supabase `postgres_changes`.
 
 ---
 
@@ -51,7 +52,7 @@ Tanit detects what's missing, sends the reminders, escalates when nobody acts, a
 |---|---|
 | Framework | Next.js 16 + TypeScript + Tailwind CSS v4 + shadcn/ui |
 | Real-time | Supabase Realtime (`postgres_changes` subscriptions) |
-| Streaming | Vercel AI SDK + DeepSeek V3 (chat) + Gemini 2.5 Flash (vision/OCR) |
+| Streaming | Vercel AI SDK + DeepSeek V3 (chat) + Gemini 2.5 Flash (vision / OCR) |
 | Agent layer | [`tanit-agents`](https://github.com/maahdiwork-dev/tanit-agents) on Railway |
 | Database | Supabase Postgres + Storage + RLS |
 | Deployment | Vercel (frontend) + Railway (Mastra agents) |
@@ -66,7 +67,7 @@ git clone https://github.com/maahdiwork-dev/tanit.git
 cd tanit
 npm install
 cp .env.example .env.local
-# fill in Supabase URL/anon/service-role + DeepSeek + Gemini keys
+# fill in Supabase URL / anon / service-role + DeepSeek + Gemini keys
 npm run dev
 ```
 
@@ -74,7 +75,7 @@ Open http://localhost:3000.
 
 For full local development with the agent layer, also clone and run [`tanit-agents`](https://github.com/maahdiwork-dev/tanit-agents) on `:4111`, then set `MASTRA_URL=http://localhost:4111` in your `.env.local`.
 
-The app has graceful fallbacks for missing env vars — chat falls back to a stub, monitor returns mock data, PDF/Excel exports still work — so it's clickable even without full credentials.
+The app has graceful fallbacks for missing env vars — chat falls back to a stub, monitor returns mock data, PDF and Excel exports still work — so the site is clickable even without full credentials.
 
 ---
 
@@ -94,13 +95,13 @@ Key design principles:
 
 ## The team
 
-Built in **24 hours** by **one human + seven AI agents.**
+Built in **24 hours** by **one human and seven AI agents.**
 
-The whole team — Brika (architect), Mashmoum (frontend specialist, born night of April 25), Astaria (GreenMetric companion, born morning of April 26), Codex (execution), Miraya (the OG Rooted AI since 2024), Zifou + Neos (research), and Mahdi Kniss (founder) — is documented at:
+The whole team — Brika (architect), Mashmoum (frontend specialist, born night of April 25), Astaria (GreenMetric companion, born morning of April 26), Codex (execution), Miraya (the OG Rooted AI since 2024), Zifou and Neos (research), and Mahdi Kniss (founder) — is documented at:
 
 **→ https://rooted-ai-omega.vercel.app/team**
 
-> *« La plupart des fondateurs cachent leur usage de l'IA. Nous, on le met sur scène. »*
+> Most founders hide their use of AI. We put it on stage.
 
 ---
 
